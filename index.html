@@ -183,6 +183,43 @@
   }
   .locate-status.error{ color:var(--skip); }
   .locate-status.ok{ color:var(--knock); }
+
+  .checkbox-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink);
+    text-transform:none;
+    letter-spacing:normal;
+    cursor:pointer;
+  }
+  .checkbox-label input[type="checkbox"]{
+    width:15px;
+    height:15px;
+    accent-color:var(--accent);
+    cursor:pointer;
+  }
+
+  .preset-btn{
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    padding:9px 12px;
+    border-radius:8px;
+    border:1px dashed var(--accent);
+    background:transparent;
+    color:var(--accent-ink);
+    cursor:pointer;
+    text-align:left;
+  }
+  .preset-btn:hover{ background:var(--accent-soft); }
+  .preset-btn.active{
+    background:var(--accent);
+    border-style:solid;
+    color:var(--paper);
+  }
   .field label{
     font-size:11px;
     letter-spacing:.08em;
@@ -597,6 +634,17 @@
       </div>
     </div>
 
+    <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" id="votedOnceCheck">
+        Voted in ≥1 of the last 2 elections
+      </label>
+    </div>
+
+    <button type="button" class="preset-btn" id="demVotersPreset">
+      Democratic voting households
+    </button>
+
     <button type="button" class="sidebar-toggle" id="extraToggle" aria-expanded="false" aria-controls="sidebarExtra">
       <span>Legend &amp; stats</span>
       <span class="arrow">▾</span>
@@ -689,7 +737,7 @@
   var modal = document.getElementById('modal');
   var clusterBanner = document.getElementById('clusterBanner');
 
-  var state = { street:'', q:'', party:'all', sort:'street', cluster:'' };
+  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false };
 
   function partyClass(p){
     if(p === 'Democratic') return 'dem';
@@ -712,6 +760,7 @@
     if(state.cluster && String(h.cluster) !== String(state.cluster)) return false;
     if(state.street && h.street !== state.street) return false;
     if(state.party !== 'all' && h.party !== state.party) return false;
+    if(state.votedOnce && h.max_score < 1) return false;
     if(state.q){
       var q = state.q.toLowerCase();
       var inAddr = h.address.toLowerCase().indexOf(q) !== -1;
@@ -968,12 +1017,44 @@
     searchTimer = setTimeout(function(){ state.q = addrSearch.value.trim(); render(); }, 120);
   });
   sortSelect.addEventListener('change', function(){ state.sort = sortSelect.value; render(); });
+  var votedOnceCheck = document.getElementById('votedOnceCheck');
+  var demVotersPreset = document.getElementById('demVotersPreset');
+
+  function syncDemPreset(){
+    var isDemVoters = state.party === 'Democratic' && state.votedOnce;
+    demVotersPreset.classList.toggle('active', isDemVoters);
+  }
+
   partyToggle.addEventListener('click', function(e){
     var btn = e.target.closest('button');
     if(!btn) return;
     Array.prototype.forEach.call(partyToggle.querySelectorAll('button'), function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
     state.party = btn.getAttribute('data-party');
+    syncDemPreset();
+    render();
+  });
+
+  votedOnceCheck.addEventListener('change', function(){
+    state.votedOnce = votedOnceCheck.checked;
+    syncDemPreset();
+    render();
+  });
+
+  demVotersPreset.addEventListener('click', function(){
+    var turningOn = !demVotersPreset.classList.contains('active');
+    if(turningOn){
+      state.party = 'Democratic';
+      state.votedOnce = true;
+    } else {
+      state.party = 'all';
+      state.votedOnce = false;
+    }
+    votedOnceCheck.checked = state.votedOnce;
+    Array.prototype.forEach.call(partyToggle.querySelectorAll('button'), function(b){
+      b.classList.toggle('active', b.getAttribute('data-party') === state.party);
+    });
+    syncDemPreset();
     render();
   });
 
