@@ -625,6 +625,15 @@
     </div>
 
     <div class="field">
+      <label>Side of street</label>
+      <div class="chip-toggle" id="sideToggle">
+        <button data-side="all" class="active">All</button>
+        <button data-side="odd">Odd</button>
+        <button data-side="even">Even</button>
+      </div>
+    </div>
+
+    <div class="field">
       <label>Party</label>
       <div class="chip-toggle" id="partyToggle">
         <button data-party="all" class="active">All</button>
@@ -730,6 +739,7 @@
   var addrSearch = document.getElementById('addrSearch');
   var sortSelect = document.getElementById('sortSelect');
   var partyToggle = document.getElementById('partyToggle');
+  var sideToggle = document.getElementById('sideToggle');
   var grid = document.getElementById('grid');
   var resultCount = document.getElementById('resultCount');
   var statsBox = document.getElementById('statsBox');
@@ -737,7 +747,7 @@
   var modal = document.getElementById('modal');
   var clusterBanner = document.getElementById('clusterBanner');
 
-  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false };
+  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false, side:'all' };
 
   function partyClass(p){
     if(p === 'Democratic') return 'dem';
@@ -761,6 +771,11 @@
     if(state.street && h.street !== state.street) return false;
     if(state.party !== 'all' && h.party !== state.party) return false;
     if(state.votedOnce && h.max_score < 1) return false;
+    if(state.side !== 'all'){
+      var isOdd = (numFromHouseAddr(h) % 2) === 1;
+      if(state.side === 'odd' && !isOdd) return false;
+      if(state.side === 'even' && isOdd) return false;
+    }
     if(state.q){
       var q = state.q.toLowerCase();
       var inAddr = h.address.toLowerCase().indexOf(q) !== -1;
@@ -1032,6 +1047,15 @@
     btn.classList.add('active');
     state.party = btn.getAttribute('data-party');
     syncDemPreset();
+    render();
+  });
+
+  sideToggle.addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if(!btn) return;
+    Array.prototype.forEach.call(sideToggle.querySelectorAll('button'), function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    state.side = btn.getAttribute('data-side');
     render();
   });
 
