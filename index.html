@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!doctype html>
 <html lang="en">
 <head>
@@ -654,6 +655,13 @@
       Democratic voting households
     </button>
 
+    <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" id="doorHangCheck">
+        Door Hang Only Mode
+      </label>
+    </div>
+
     <button type="button" class="sidebar-toggle" id="extraToggle" aria-expanded="false" aria-controls="sidebarExtra">
       <span>Legend &amp; stats</span>
       <span class="arrow">▾</span>
@@ -747,7 +755,7 @@
   var modal = document.getElementById('modal');
   var clusterBanner = document.getElementById('clusterBanner');
 
-  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false, side:'all' };
+  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false, side:'all', doorHang:false };
 
   function partyClass(p){
     if(p === 'Democratic') return 'dem';
@@ -764,6 +772,9 @@
     if(score >= 2) return 'var(--knock)';
     if(score === 1) return 'var(--mid)';
     return 'var(--skip)';
+  }
+  function isDoorHangGood(h){
+    return h.party !== 'Republican' && h.max_score >= 1;
   }
 
   function matches(h){
@@ -807,7 +818,9 @@
     card.className = 'card';
     var bar = document.createElement('div');
     bar.className = 'knock-bar';
-    bar.style.background = scoreColor(h.max_score);
+
+    var doorHang = state.doorHang;
+    bar.style.background = doorHang ? (isDoorHangGood(h) ? 'var(--knock)' : 'var(--skip)') : scoreColor(h.max_score);
     card.appendChild(bar);
 
     var body = document.createElement('div');
@@ -818,35 +831,40 @@
     var addr = document.createElement('div');
     addr.className = 'addr';
     addr.innerHTML = h.housenum + ' <span class="street-name">' + h.street + '</span>';
-    var badge = document.createElement('span');
-    badge.className = 'party-badge ' + partyClass(h.party);
-    badge.textContent = partyLabel(h.party);
     top.appendChild(addr);
-    top.appendChild(badge);
+
+    if(!doorHang){
+      var badge = document.createElement('span');
+      badge.className = 'party-badge ' + partyClass(h.party);
+      badge.textContent = partyLabel(h.party);
+      top.appendChild(badge);
+    }
     body.appendChild(top);
 
-    var meta = document.createElement('div');
-    meta.className = 'card-meta';
-    var pill = document.createElement('span');
-    pill.className = 'score-pill s' + h.max_score;
-    pill.textContent = h.max_score === 2 ? 'Votes every cycle' : (h.max_score === 1 ? 'Votes sometimes' : 'Rarely votes');
-    meta.appendChild(pill);
-    var vc = document.createElement('span');
-    vc.textContent = h.voters.length + (h.voters.length === 1 ? ' voter' : ' voters');
-    meta.appendChild(vc);
-    if(h.cluster && clusterById[h.cluster]){
-      var ctag = document.createElement('span');
-      ctag.className = 'cluster-tag';
-      ctag.textContent = '#' + h.cluster;
-      ctag.title = clusterById[h.cluster].name;
-      meta.appendChild(ctag);
-    }
-    body.appendChild(meta);
+    if(!doorHang){
+      var meta = document.createElement('div');
+      meta.className = 'card-meta';
+      var pill = document.createElement('span');
+      pill.className = 'score-pill s' + h.max_score;
+      pill.textContent = h.max_score === 2 ? 'Votes every cycle' : (h.max_score === 1 ? 'Votes sometimes' : 'Rarely votes');
+      meta.appendChild(pill);
+      var vc = document.createElement('span');
+      vc.textContent = h.voters.length + (h.voters.length === 1 ? ' voter' : ' voters');
+      meta.appendChild(vc);
+      if(h.cluster && clusterById[h.cluster]){
+        var ctag = document.createElement('span');
+        ctag.className = 'cluster-tag';
+        ctag.textContent = '#' + h.cluster;
+        ctag.title = clusterById[h.cluster].name;
+        meta.appendChild(ctag);
+      }
+      body.appendChild(meta);
 
-    var preview = document.createElement('div');
-    preview.className = 'voters-preview';
-    preview.textContent = h.voters.map(function(v){ return v.name; }).join(', ');
-    body.appendChild(preview);
+      var preview = document.createElement('div');
+      preview.className = 'voters-preview';
+      preview.textContent = h.voters.map(function(v){ return v.name; }).join(', ');
+      body.appendChild(preview);
+    }
 
     card.appendChild(body);
     card.addEventListener('click', function(){ openModal(h); });
@@ -1034,6 +1052,12 @@
   sortSelect.addEventListener('change', function(){ state.sort = sortSelect.value; render(); });
   var votedOnceCheck = document.getElementById('votedOnceCheck');
   var demVotersPreset = document.getElementById('demVotersPreset');
+  var doorHangCheck = document.getElementById('doorHangCheck');
+
+  doorHangCheck.addEventListener('change', function(){
+    state.doorHang = doorHangCheck.checked;
+    render();
+  });
 
   function syncDemPreset(){
     var isDemVoters = state.party === 'Democratic' && state.votedOnce;
@@ -1094,3 +1118,5 @@
 </script>
 </body>
 </html>
+
+</body></html>
