@@ -646,7 +646,7 @@
 
     <div class="field">
       <label class="checkbox-label">
-        <input type="checkbox" id="votedOnceCheck">
+        <input type="checkbox" id="votedOnceCheck" checked>
         Voted in ≥1 of the last 2 elections
       </label>
     </div>
@@ -657,7 +657,7 @@
 
     <div class="field">
       <label class="checkbox-label">
-        <input type="checkbox" id="doorHangCheck">
+        <input type="checkbox" id="doorHangCheck" checked>
         Door Hang Only Mode
       </label>
     </div>
@@ -755,7 +755,7 @@
   var modal = document.getElementById('modal');
   var clusterBanner = document.getElementById('clusterBanner');
 
-  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:false, side:'all', doorHang:false };
+  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:true, side:'all', doorHang:true };
 
   function partyClass(p){
     if(p === 'Democratic') return 'dem';
