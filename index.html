@@ -347,33 +347,6 @@
   }
   .sort-control select{ width:auto; padding:6px 9px; font-size:13px; }
 
-  .cluster-banner[hidden]{ display:none; }
-  .cluster-banner{
-    display:flex;
-    align-items:center;
-    gap:16px;
-    flex-wrap:wrap;
-    background:var(--accent-soft);
-    border:1px solid var(--accent);
-    border-radius:10px;
-    padding:12px 16px;
-    margin-bottom:16px;
-  }
-  .cluster-banner .rank{
-    font-family:"Barlow Semi Condensed", sans-serif;
-    font-size:26px;
-    font-weight:700;
-    color:var(--accent-ink);
-    line-height:1;
-  }
-  .cluster-banner .info{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:180px; }
-  .cluster-banner .info .name{ font-weight:600; font-size:14.5px; color:var(--ink); }
-  .cluster-banner .info .streets{ font-size:12px; color:var(--ink-soft); }
-  .cluster-banner .figures{ display:flex; gap:18px; flex-wrap:wrap; }
-  .cluster-banner .figure{ text-align:center; }
-  .cluster-banner .figure .num{ font-family:"JetBrains Mono",monospace; font-weight:600; font-size:16px; color:var(--accent-ink); display:block; }
-  .cluster-banner .figure .lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
-
   .grid{
     display:grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -444,17 +417,6 @@
   .score-pill.s0{ background:var(--skip-soft); color:var(--skip); }
   .score-pill.s1{ background:var(--mid-soft); color:var(--mid); }
   .score-pill.s2{ background:var(--knock-soft); color:var(--knock); }
-
-  .cluster-tag{
-    font-family:"JetBrains Mono", monospace;
-    font-size:10.5px;
-    font-weight:600;
-    color:var(--accent-ink);
-    background:var(--accent-soft);
-    border-radius:5px;
-    padding:2px 6px;
-    margin-left:auto;
-  }
 
   .voters-preview{
     font-size:12px;
@@ -544,9 +506,9 @@
     align-items:center;
     justify-content:space-between;
     gap:10px;
-    margin-top:16px;
-    padding-top:14px;
-    border-top:1px solid var(--line);
+    margin:10px 0 14px;
+    padding-bottom:12px;
+    border-bottom:1px solid var(--line);
   }
   .modal-nav-btn{
     font-family:inherit;
@@ -637,13 +599,6 @@
       <span class="eyebrow">Field canvass tool</span>
       <h1>San Bruno Walk List</h1>
       <span class="sub">Registered households ranked by how reliably they vote, so your team knocks the doors most likely to open.</span>
-    </div>
-
-    <div class="field">
-      <label for="clusterSelect">Priority walk cluster</label>
-      <select id="clusterSelect">
-        <option value="">All clusters</option>
-      </select>
     </div>
 
     <div class="field">
@@ -745,8 +700,6 @@
       </div>
     </div>
 
-    <div class="cluster-banner" id="clusterBanner" hidden></div>
-
     <div class="grid" id="grid"></div>
   </main>
 </div>
@@ -762,23 +715,11 @@
   var houses = DATA.houses;
   var streets = DATA.streets;
   var streetGeo = DATA.streetGeo || {};
-  var clusters = DATA.clusters || [];
-  var clusterById = {};
-  clusters.forEach(function(c){ clusterById[c.id] = c; });
-
   var streetSelect = document.getElementById('streetSelect');
   streets.forEach(function(s){
     var opt = document.createElement('option');
     opt.value = s; opt.textContent = s;
     streetSelect.appendChild(opt);
-  });
-
-  var clusterSelect = document.getElementById('clusterSelect');
-  clusters.forEach(function(c){
-    var opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = '#' + c.id + ' ' + c.name + ' (' + c.knock_rate + '% knock)';
-    clusterSelect.appendChild(opt);
   });
 
   var addrSearch = document.getElementById('addrSearch');
@@ -790,9 +731,8 @@
   var statsBox = document.getElementById('statsBox');
   var modalBackdrop = document.getElementById('modalBackdrop');
   var modal = document.getElementById('modal');
-  var clusterBanner = document.getElementById('clusterBanner');
 
-  var state = { street:'', q:'', party:'all', sort:'street', cluster:'', votedOnce:true, side:'all', doorHang:true };
+  var state = { street:'', q:'', party:'all', sort:'street', votedOnce:true, side:'all', doorHang:true };
 
   function partyClass(p){
     if(p === 'Democratic') return 'dem';
@@ -811,7 +751,12 @@
     return 'var(--skip)';
   }
   function isDoorHangGood(h){
-    return h.party !== 'Republican' && h.max_score >= 1;
+    var nonRepVoted = 0, rep = 0;
+    h.voters.forEach(function(v){
+      if(v.party === 'Republican'){ rep++; }
+      else if(v.score >= 1){ nonRepVoted++; }
+    });
+    return nonRepVoted > rep;
   }
   function strengthInfo(h){
     if(state.doorHang){
@@ -829,7 +774,6 @@
   }
 
   function matches(h){
-    if(state.cluster && String(h.cluster) !== String(state.cluster)) return false;
     if(state.street && h.street !== state.street) return false;
     if(state.party !== 'all' && h.party !== state.party) return false;
     if(state.votedOnce && h.max_score < 1) return false;
@@ -902,13 +846,6 @@
       var vc = document.createElement('span');
       vc.textContent = h.voters.length + (h.voters.length === 1 ? ' voter' : ' voters');
       meta.appendChild(vc);
-      if(h.cluster && clusterById[h.cluster]){
-        var ctag = document.createElement('span');
-        ctag.className = 'cluster-tag';
-        ctag.textContent = '#' + h.cluster;
-        ctag.title = clusterById[h.cluster].name;
-        meta.appendChild(ctag);
-      }
       body.appendChild(meta);
 
       var preview = document.createElement('div');
@@ -942,25 +879,8 @@
       grid.appendChild(frag);
     }
 
-    var scopeLabel = state.street ? (' on ' + state.street) : (state.cluster ? (' in ' + clusterById[state.cluster].name) : ' across ' + streets.length + ' streets');
+    var scopeLabel = state.street ? (' on ' + state.street) : (' across ' + streets.length + ' streets');
     resultCount.textContent = sorted.length.toLocaleString() + scopeLabel;
-
-    if(state.cluster && clusterById[state.cluster]){
-      var c = clusterById[state.cluster];
-      clusterBanner.hidden = false;
-      clusterBanner.innerHTML =
-        '<span class="rank">#' + c.id + '</span>' +
-        '<div class="info"><span class="name">' + c.name + '</span>' +
-        '<span class="streets">' + c.streets.join(', ') + '</span></div>' +
-        '<div class="figures">' +
-          '<div class="figure"><span class="num">' + c.houses.toLocaleString() + '</span><span class="lbl">Households</span></div>' +
-          '<div class="figure"><span class="num" style="color:var(--knock)">' + c.knock_rate + '%</span><span class="lbl">Knock rate</span></div>' +
-          '<div class="figure"><span class="num">' + c.streets.length + '</span><span class="lbl">Streets</span></div>' +
-        '</div>';
-    } else {
-      clusterBanner.hidden = true;
-      clusterBanner.innerHTML = '';
-    }
 
     var knock = filtered.filter(function(h){return h.max_score===2;}).length;
     var mid = filtered.filter(function(h){return h.max_score===1;}).length;
@@ -999,6 +919,31 @@
     head.appendChild(h3);
     head.appendChild(close);
     modal.appendChild(head);
+
+    var nav = document.createElement('div');
+    nav.className = 'modal-nav';
+    var backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'modal-nav-btn';
+    backBtn.innerHTML = '← Back';
+    backBtn.disabled = currentIndex <= 0;
+    backBtn.addEventListener('click', function(){ openModalAt(currentIndex - 1); });
+
+    var posLabel = document.createElement('span');
+    posLabel.className = 'modal-nav-pos';
+    posLabel.textContent = (currentIndex + 1) + ' of ' + currentList.length;
+
+    var nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'modal-nav-btn';
+    nextBtn.innerHTML = 'Next →';
+    nextBtn.disabled = currentIndex >= currentList.length - 1;
+    nextBtn.addEventListener('click', function(){ openModalAt(currentIndex + 1); });
+
+    nav.appendChild(backBtn);
+    nav.appendChild(posLabel);
+    nav.appendChild(nextBtn);
+    modal.appendChild(nav);
 
     var city = document.createElement('div');
     city.className = 'city';
@@ -1047,31 +992,6 @@
       modal.appendChild(vc);
     });
 
-    var nav = document.createElement('div');
-    nav.className = 'modal-nav';
-    var backBtn = document.createElement('button');
-    backBtn.type = 'button';
-    backBtn.className = 'modal-nav-btn';
-    backBtn.innerHTML = '← Back';
-    backBtn.disabled = currentIndex <= 0;
-    backBtn.addEventListener('click', function(){ openModalAt(currentIndex - 1); });
-
-    var posLabel = document.createElement('span');
-    posLabel.className = 'modal-nav-pos';
-    posLabel.textContent = (currentIndex + 1) + ' of ' + currentList.length;
-
-    var nextBtn = document.createElement('button');
-    nextBtn.type = 'button';
-    nextBtn.className = 'modal-nav-btn';
-    nextBtn.innerHTML = 'Next →';
-    nextBtn.disabled = currentIndex >= currentList.length - 1;
-    nextBtn.addEventListener('click', function(){ openModalAt(currentIndex + 1); });
-
-    nav.appendChild(backBtn);
-    nav.appendChild(posLabel);
-    nav.appendChild(nextBtn);
-    modal.appendChild(nav);
-
     modalBackdrop.classList.add('open');
   }
   function closeModal(){ modalBackdrop.classList.remove('open'); }
@@ -1084,7 +1004,6 @@
   });
 
   streetSelect.addEventListener('change', function(){ state.street = streetSelect.value; render(); });
-  clusterSelect.addEventListener('change', function(){ state.cluster = clusterSelect.value; render(); });
 
   var locateBtn = document.getElementById('locateBtn');
   var locateStatus = document.getElementById('locateStatus');
