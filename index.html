@@ -504,7 +504,16 @@
     font-size:20px; color:var(--muted); line-height:1;
     padding:2px;
   }
-  .modal .city{ font-size:12.5px; color:var(--muted); margin-bottom:16px; }
+  .modal .city{ font-size:12.5px; color:var(--muted); margin-bottom:0; }
+  .modal-strength{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.01em;
+    padding:5px 11px;
+    border-radius:7px;
+    margin:10px 0 16px;
+  }
   .voter-card{
     border:1px solid var(--line);
     border-radius:9px;
@@ -529,6 +538,34 @@
   }
   .vote-tag.yes{ background:var(--knock-soft); color:var(--knock); }
   .vote-tag.no{ background:var(--paper-2); color:var(--muted); }
+
+  .modal-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .modal-nav-btn{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    padding:9px 14px;
+    border-radius:8px;
+    border:1px solid var(--accent);
+    background:var(--accent-soft);
+    color:var(--accent-ink);
+    cursor:pointer;
+  }
+  .modal-nav-btn:hover:not(:disabled){ filter:brightness(0.97); }
+  .modal-nav-btn:disabled{ opacity:.4; cursor:default; }
+  .modal-nav-pos{
+    font-size:11.5px;
+    color:var(--muted);
+    font-family:"JetBrains Mono", monospace;
+  }
 
   .sidebar-toggle{
     display:none;
@@ -776,6 +813,20 @@
   function isDoorHangGood(h){
     return h.party !== 'Republican' && h.max_score >= 1;
   }
+  function strengthInfo(h){
+    if(state.doorHang){
+      var good = isDoorHangGood(h);
+      return {
+        strip: good ? 'var(--knock)' : 'var(--skip)',
+        soft: good ? 'var(--knock-soft)' : 'var(--skip-soft)',
+        label: good ? '✓ Door hang match' : '✗ Not a match'
+      };
+    }
+    var s = h.max_score;
+    if(s >= 2) return { strip:'var(--knock)', soft:'var(--knock-soft)', label:'Votes every cycle' };
+    if(s === 1) return { strip:'var(--mid)', soft:'var(--mid-soft)', label:'Votes sometimes' };
+    return { strip:'var(--skip)', soft:'var(--skip-soft)', label:'Rarely votes' };
+  }
 
   function matches(h){
     if(state.cluster && String(h.cluster) !== String(state.cluster)) return false;
@@ -871,9 +922,13 @@
     return card;
   }
 
+  var currentList = [];
+  var currentIndex = -1;
+
   function render(){
     var filtered = houses.filter(matches);
     var sorted = sortHouses(filtered);
+    currentList = sorted;
 
     grid.innerHTML = '';
     if(sorted.length === 0){
@@ -918,7 +973,20 @@
   }
 
   function openModal(h){
+    var idx = currentList.indexOf(h);
+    openModalAt(idx === -1 ? 0 : idx);
+  }
+
+  function openModalAt(index){
+    if(!currentList.length) return;
+    if(index < 0) index = 0;
+    if(index > currentList.length - 1) index = currentList.length - 1;
+    currentIndex = index;
+    var h = currentList[currentIndex];
+    var info = strengthInfo(h);
+
     modal.innerHTML = '';
+    modal.style.borderTop = '6px solid ' + info.strip;
     var head = document.createElement('div');
     head.className = 'modal-head';
     var h3 = document.createElement('h3');
@@ -936,6 +1004,13 @@
     city.className = 'city';
     city.textContent = h.city;
     modal.appendChild(city);
+
+    var strengthBadge = document.createElement('div');
+    strengthBadge.className = 'modal-strength';
+    strengthBadge.style.background = info.soft;
+    strengthBadge.style.color = info.strip;
+    strengthBadge.textContent = info.label;
+    modal.appendChild(strengthBadge);
 
     h.voters.forEach(function(v){
       var vc = document.createElement('div');
@@ -972,11 +1047,41 @@
       modal.appendChild(vc);
     });
 
+    var nav = document.createElement('div');
+    nav.className = 'modal-nav';
+    var backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'modal-nav-btn';
+    backBtn.innerHTML = '← Back';
+    backBtn.disabled = currentIndex <= 0;
+    backBtn.addEventListener('click', function(){ openModalAt(currentIndex - 1); });
+
+    var posLabel = document.createElement('span');
+    posLabel.className = 'modal-nav-pos';
+    posLabel.textContent = (currentIndex + 1) + ' of ' + currentList.length;
+
+    var nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'modal-nav-btn';
+    nextBtn.innerHTML = 'Next →';
+    nextBtn.disabled = currentIndex >= currentList.length - 1;
+    nextBtn.addEventListener('click', function(){ openModalAt(currentIndex + 1); });
+
+    nav.appendChild(backBtn);
+    nav.appendChild(posLabel);
+    nav.appendChild(nextBtn);
+    modal.appendChild(nav);
+
     modalBackdrop.classList.add('open');
   }
   function closeModal(){ modalBackdrop.classList.remove('open'); }
   modalBackdrop.addEventListener('click', function(e){ if(e.target === modalBackdrop) closeModal(); });
-  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeModal(); });
+  document.addEventListener('keydown', function(e){
+    if(!modalBackdrop.classList.contains('open')) return;
+    if(e.key === 'Escape') closeModal();
+    else if(e.key === 'ArrowLeft') openModalAt(currentIndex - 1);
+    else if(e.key === 'ArrowRight') openModalAt(currentIndex + 1);
+  });
 
   streetSelect.addEventListener('change', function(){ state.street = streetSelect.value; render(); });
   clusterSelect.addEventListener('change', function(){ state.cluster = clusterSelect.value; render(); });
