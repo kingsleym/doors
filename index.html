@@ -486,6 +486,13 @@
     gap:7px;
   }
   .voter-card:last-child{ margin-bottom:0; }
+  .voters-more{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    padding:6px 0 2px;
+    font-style:italic;
+  }
   .voter-name-row{
     display:flex; justify-content:space-between; align-items:center; gap:8px;
   }
@@ -751,12 +758,14 @@
     return 'var(--skip)';
   }
   function isDoorHangGood(h){
-    var nonRepVoted = 0, rep = 0;
+    if(h.max_score < 1) return false;
+    var nonRepVoted = 0, repVoted = 0;
     h.voters.forEach(function(v){
-      if(v.party === 'Republican'){ rep++; }
-      else if(v.score >= 1){ nonRepVoted++; }
+      if(v.score < 1) return;
+      if(v.party === 'Republican'){ repVoted++; }
+      else { nonRepVoted++; }
     });
-    return nonRepVoted > rep;
+    return nonRepVoted >= repVoted;
   }
   function strengthInfo(h){
     if(state.doorHang){
@@ -957,7 +966,8 @@
     strengthBadge.textContent = info.label;
     modal.appendChild(strengthBadge);
 
-    h.voters.forEach(function(v){
+    var votersToShow = h.voters.length >= 4 ? h.voters.slice(0, 4) : h.voters;
+    votersToShow.forEach(function(v){
       var vc = document.createElement('div');
       vc.className = 'voter-card';
       var row = document.createElement('div');
@@ -991,6 +1001,13 @@
 
       modal.appendChild(vc);
     });
+
+    if(h.voters.length > votersToShow.length){
+      var more = document.createElement('div');
+      more.className = 'voters-more';
+      more.textContent = '+ ' + (h.voters.length - votersToShow.length) + ' more resident' + (h.voters.length - votersToShow.length === 1 ? '' : 's') + ' at this address';
+      modal.appendChild(more);
+    }
 
     modalBackdrop.classList.add('open');
   }
